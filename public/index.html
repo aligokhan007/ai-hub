@@ -1,1 +1,566 @@
 
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<meta name="theme-color" content="#0f0f0f"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="AI Hub"/>
+<title>AI Hub</title>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="apple-touch-icon" href="/icon-192.png"/>
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --bg2: #1a1a1a;
+    --bg3: #242424;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f0;
+    --text2: #888;
+    --text3: #555;
+    --purple: #7c6ff7;
+    --purple-bg: rgba(124,111,247,0.12);
+    --blue: #4da6ff;
+    --blue-bg: rgba(77,166,255,0.12);
+    --green: #4ade80;
+    --green-bg: rgba(74,222,128,0.1);
+    --amber: #f59e0b;
+    --amber-bg: rgba(245,158,11,0.1);
+    --red: #f87171;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+
+  /* Layout */
+  #app { display:flex; flex-direction:column; height:100%; max-width:480px; margin:0 auto; }
+  #header { padding:16px 18px 12px; border-bottom:0.5px solid var(--border); flex-shrink:0; }
+  #header-top { display:flex; align-items:center; justify-content:space-between; }
+  #header h1 { font-size:17px; font-weight:600; color:var(--text); }
+  #header-sub { font-size:11px; color:var(--text3); margin-top:3px; }
+  .api-dots { display:flex; gap:6px; align-items:center; }
+  .api-dot { display:flex; align-items:center; gap:4px; font-size:10px; color:var(--text3); }
+  .dot { width:6px; height:6px; border-radius:50%; background:var(--red); transition:background 0.3s; }
+  .dot.ok { background:var(--green); }
+
+  /* Tab bar */
+  #tabbar { display:flex; border-bottom:0.5px solid var(--border); flex-shrink:0; background:var(--bg); }
+  .tab { flex:1; padding:11px 4px; font-size:11px; text-align:center; color:var(--text3); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; }
+  .tab.active { color:var(--text); border-bottom-color:var(--purple); }
+
+  /* Pages */
+  #content { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .page { display:none; padding:16px; }
+  .page.active { display:block; }
+
+  /* Section label */
+  .section-label { font-size:10px; font-weight:600; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin:0 0 10px; }
+
+  /* Tool cards grid */
+  .tools-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+  .tool-card { background:var(--bg2); border:0.5px solid var(--border); border-radius:var(--radius); padding:14px; cursor:pointer; transition:all 0.15s; display:flex; flex-direction:column; gap:8px; }
+  .tool-card:active { transform:scale(0.97); background:var(--bg3); }
+  .tool-card.primary { border-color:rgba(124,111,247,0.3); }
+  .tool-icon { width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700; }
+  .tool-name { font-size:13px; font-weight:600; color:var(--text); }
+  .tool-desc { font-size:11px; color:var(--text2); line-height:1.4; }
+  .tool-badge { font-size:9px; padding:2px 7px; border-radius:20px; align-self:flex-start; font-weight:500; }
+  .badge-api { background:var(--purple-bg); color:var(--purple); }
+  .badge-link { background:var(--bg3); color:var(--text2); border:0.5px solid var(--border); }
+
+  /* Image gen page */
+  .model-row { display:flex; gap:6px; margin-bottom:14px; overflow-x:auto; padding-bottom:2px; }
+  .model-chip { flex-shrink:0; font-size:12px; padding:6px 12px; border-radius:20px; border:0.5px solid var(--border2); color:var(--text2); cursor:pointer; transition:all 0.15s; background:var(--bg2); }
+  .model-chip.active { background:var(--purple-bg); color:var(--purple); border-color:rgba(124,111,247,0.4); }
+  textarea#imgPrompt { width:100%; background:var(--bg2); border:0.5px solid var(--border2); border-radius:var(--radius-sm); padding:12px; font-size:14px; color:var(--text); resize:none; height:90px; font-family:inherit; outline:none; transition:border 0.15s; }
+  textarea#imgPrompt:focus { border-color:rgba(124,111,247,0.5); }
+  .options-row { display:flex; gap:8px; margin:10px 0; }
+  .opt-box { flex:1; background:var(--bg2); border:0.5px solid var(--border); border-radius:var(--radius-sm); padding:8px 10px; }
+  .opt-label { font-size:10px; color:var(--text3); margin-bottom:3px; }
+  .opt-val { font-size:12px; font-weight:600; color:var(--text); }
+  .opt-box select { width:100%; background:transparent; border:none; color:var(--text); font-size:12px; font-weight:600; outline:none; }
+  .cost-row { display:flex; align-items:center; justify-content:space-between; margin:10px 0; }
+  .cost-note { font-size:11px; color:var(--text3); }
+  .cost-val { font-size:13px; font-weight:600; color:var(--amber); }
+  .gen-btn { width:100%; padding:14px; border-radius:var(--radius); background:var(--purple); color:#fff; font-size:15px; font-weight:600; border:none; cursor:pointer; transition:opacity 0.15s; }
+  .gen-btn:active { opacity:0.8; }
+  .gen-btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .img-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
+  .img-cell { aspect-ratio:1; border-radius:var(--radius-sm); background:var(--bg2); border:0.5px solid var(--border); overflow:hidden; display:flex; align-items:center; justify-content:center; }
+  .img-cell img { width:100%; height:100%; object-fit:cover; }
+  .img-placeholder { color:var(--text3); font-size:11px; }
+  .spinner { width:20px; height:20px; border:2px solid var(--border2); border-top-color:var(--purple); border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* Chat page */
+  #chat-page { display:none; flex-direction:column; height:100%; padding:0; }
+  #chat-page.active { display:flex; }
+  .chat-model-row { display:flex; gap:6px; padding:12px 16px; border-bottom:0.5px solid var(--border); flex-shrink:0; overflow-x:auto; }
+  .chat-messages { flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+  .msg { max-width:85%; line-height:1.5; font-size:14px; padding:10px 14px; border-radius:var(--radius); }
+  .msg-user { align-self:flex-end; background:var(--bg3); color:var(--text); border:0.5px solid var(--border2); }
+  .msg-ai { align-self:flex-start; }
+  .msg-ai.claude { background:var(--purple-bg); color:#c4beff; }
+  .msg-ai.gemini { background:var(--blue-bg); color:#93c5fd; }
+  .msg-ai.thinking { opacity:0.6; }
+  .chat-input-area { padding:12px 16px; border-top:0.5px solid var(--border); display:flex; gap:8px; flex-shrink:0; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
+  .chat-input-area textarea { flex:1; background:var(--bg2); border:0.5px solid var(--border2); border-radius:var(--radius-sm); padding:10px 12px; font-size:14px; color:var(--text); resize:none; height:42px; font-family:inherit; outline:none; max-height:120px; overflow-y:auto; }
+  .chat-send { width:42px; height:42px; border-radius:var(--radius-sm); background:var(--purple); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .chat-send svg { width:18px; height:18px; fill:none; stroke:#fff; stroke-width:2; }
+
+  /* Settings page */
+  .setting-group { background:var(--bg2); border:0.5px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:14px; }
+  .setting-item { display:flex; flex-direction:column; gap:6px; padding:14px; border-bottom:0.5px solid var(--border); }
+  .setting-item:last-child { border-bottom:none; }
+  .setting-name { font-size:13px; font-weight:500; color:var(--text); }
+  .setting-hint { font-size:11px; color:var(--text3); }
+  .setting-item input { background:var(--bg3); border:0.5px solid var(--border2); border-radius:var(--radius-sm); padding:9px 12px; font-size:13px; color:var(--text); font-family:'Menlo',monospace; outline:none; width:100%; transition:border 0.15s; }
+  .setting-item input:focus { border-color:rgba(124,111,247,0.5); }
+  .save-btn { width:100%; padding:13px; border-radius:var(--radius); background:var(--purple); color:#fff; font-size:15px; font-weight:600; border:none; cursor:pointer; margin-top:4px; }
+  .status-msg { font-size:12px; color:var(--green); text-align:center; margin-top:8px; display:none; }
+
+  /* Link cards */
+  .link-card { display:flex; align-items:center; gap:12px; background:var(--bg2); border:0.5px solid var(--border); border-radius:var(--radius); padding:14px; cursor:pointer; transition:all 0.15s; text-decoration:none; }
+  .link-card:active { transform:scale(0.98); }
+  .link-icon { width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; flex-shrink:0; }
+  .link-info { flex:1; }
+  .link-name { font-size:13px; font-weight:600; color:var(--text); }
+  .link-desc { font-size:11px; color:var(--text2); margin-top:2px; }
+  .link-arrow { color:var(--text3); font-size:16px; }
+
+  /* Toast */
+  #toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:var(--bg3); border:0.5px solid var(--border2); border-radius:var(--radius-sm); padding:8px 16px; font-size:12px; color:var(--text); display:none; z-index:999; white-space:nowrap; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div id="header-top">
+      <div>
+        <h1>AI Hub</h1>
+        <div id="header-sub">Kişisel yapay zeka arayüzü</div>
+      </div>
+      <div class="api-dots">
+        <div class="api-dot"><div class="dot" id="dot-fal"></div>fal</div>
+        <div class="api-dot"><div class="dot" id="dot-claude"></div>claude</div>
+        <div class="api-dot"><div class="dot" id="dot-gemini"></div>gemini</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tabbar">
+    <div class="tab active" onclick="showPage('home')">Ana Sayfa</div>
+    <div class="tab" onclick="showPage('image')">Görsel</div>
+    <div class="tab" onclick="showPage('chat')">Sohbet</div>
+    <div class="tab" onclick="showPage('settings')">Ayarlar</div>
+  </div>
+
+  <div id="content">
+
+    <!-- HOME -->
+    <div class="page active" id="page-home">
+      <div class="section-label">Fal.ai ile üret</div>
+      <div class="tools-grid">
+        <div class="tool-card primary" onclick="showPage('image'); setImgModel('nano-banana')">
+          <div class="tool-icon" style="background:rgba(245,158,11,0.12);color:#f59e0b;">NB</div>
+          <div class="tool-name">Nano Banana</div>
+          <div class="tool-desc">Hızlı görsel üretme</div>
+          <div class="tool-badge badge-api">fal.ai API</div>
+        </div>
+        <div class="tool-card" onclick="showPage('image'); setImgModel('kling-video')">
+          <div class="tool-icon" style="background:rgba(248,113,113,0.12);color:#f87171;">K</div>
+          <div class="tool-name">Kling v3</div>
+          <div class="tool-desc">Video üretme</div>
+          <div class="tool-badge badge-api">fal.ai API</div>
+        </div>
+        <div class="tool-card" onclick="showPage('image'); setImgModel('flux-dev')">
+          <div class="tool-icon" style="background:rgba(124,111,247,0.12);color:#7c6ff7;">FX</div>
+          <div class="tool-name">FLUX Dev</div>
+          <div class="tool-desc">Alternatif görsel</div>
+          <div class="tool-badge badge-api">fal.ai API</div>
+        </div>
+        <div class="tool-card" onclick="showPage('image'); setImgModel('stable-audio')">
+          <div class="tool-icon" style="background:rgba(74,222,128,0.1);color:#4ade80;">SA</div>
+          <div class="tool-name">Stable Audio</div>
+          <div class="tool-desc">Ses üretme</div>
+          <div class="tool-badge badge-api">fal.ai API</div>
+        </div>
+      </div>
+
+      <div class="section-label">Sohbet</div>
+      <div class="tools-grid" style="margin-bottom:20px;">
+        <div class="tool-card primary" onclick="showPage('chat'); setChatModel('claude')">
+          <div class="tool-icon" style="background:rgba(124,111,247,0.12);color:#7c6ff7;">C</div>
+          <div class="tool-name">Claude</div>
+          <div class="tool-desc">Sonnet 4</div>
+          <div class="tool-badge badge-api">API entegre</div>
+        </div>
+        <div class="tool-card" onclick="showPage('chat'); setChatModel('gemini')">
+          <div class="tool-icon" style="background:rgba(77,166,255,0.12);color:#4da6ff;">G</div>
+          <div class="tool-name">Gemini</div>
+          <div class="tool-desc">2.5 Pro</div>
+          <div class="tool-badge badge-api">API entegre</div>
+        </div>
+      </div>
+
+      <div class="section-label">Hızlı Erişim</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <a class="link-card" href="https://suno.com" target="_blank">
+          <div class="link-icon" style="background:rgba(74,222,128,0.1);color:#4ade80;">S</div>
+          <div class="link-info">
+            <div class="link-name">Suno</div>
+            <div class="link-desc">Müzik üretme · aboneliğin var</div>
+          </div>
+          <div class="link-arrow">›</div>
+        </a>
+        <a class="link-card" href="https://notebooklm.google.com" target="_blank">
+          <div class="link-icon" style="background:rgba(255,255,255,0.05);color:#888;">N</div>
+          <div class="link-info">
+            <div class="link-name">NotebookLM</div>
+            <div class="link-desc">Araştırma & kütüphane</div>
+          </div>
+          <div class="link-arrow">›</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- IMAGE GEN -->
+    <div class="page" id="page-image">
+      <div class="model-row" id="imgModelRow">
+        <div class="model-chip active" onclick="setImgModel('nano-banana')" id="chip-nano-banana">Nano Banana</div>
+        <div class="model-chip" onclick="setImgModel('flux-dev')" id="chip-flux-dev">FLUX Dev</div>
+        <div class="model-chip" onclick="setImgModel('flux-pro')" id="chip-flux-pro">FLUX Pro</div>
+        <div class="model-chip" onclick="setImgModel('kling-video')" id="chip-kling-video">Kling v3</div>
+        <div class="model-chip" onclick="setImgModel('stable-audio')" id="chip-stable-audio">Stable Audio</div>
+      </div>
+      <textarea id="imgPrompt" placeholder="Prompt yaz... örn: cinematic portrait, golden hour, 8k"></textarea>
+      <div class="options-row">
+        <div class="opt-box" id="sizeBox">
+          <div class="opt-label">Boyut</div>
+          <select id="sizeSelect" onchange="updateCost()">
+            <option value="square_hd">1024×1024</option>
+            <option value="landscape_hd">1280×720</option>
+            <option value="portrait_hd">720×1280</option>
+          </select>
+        </div>
+        <div class="opt-box">
+          <div class="opt-label">Adet</div>
+          <select id="cntSelect" onchange="updateCost()">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="4" selected>4</option>
+          </select>
+        </div>
+      </div>
+      <div class="cost-row">
+        <div class="cost-note" id="costNote">Nano Banana · image/mp fiyatlandırma</div>
+        <div class="cost-val" id="costVal">≈ $0.10</div>
+      </div>
+      <button class="gen-btn" id="genBtn" onclick="generate()">Üret</button>
+      <div class="img-grid" id="imgGrid">
+        <div class="img-cell"><div class="img-placeholder">görsel burada</div></div>
+        <div class="img-cell"><div class="img-placeholder">görsel burada</div></div>
+        <div class="img-cell"><div class="img-placeholder">görsel burada</div></div>
+        <div class="img-cell"><div class="img-placeholder">görsel burada</div></div>
+      </div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="page" id="page-chat" id="chat-page">
+      <div class="chat-model-row">
+        <div class="model-chip active" id="chat-chip-claude" onclick="setChatModel('claude')">Claude Sonnet 4</div>
+        <div class="model-chip" id="chat-chip-gemini" onclick="setChatModel('gemini')">Gemini 2.5 Pro</div>
+      </div>
+      <div id="chatMessages" style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+        <div class="msg msg-ai claude">Merhaba! Nasıl yardımcı olabilirim?</div>
+      </div>
+      <div class="chat-input-area">
+        <textarea id="chatInput" placeholder="Mesaj yaz..." onkeydown="handleChatKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="chat-send" onclick="sendChat()">
+          <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="section-label">API Anahtarları</div>
+      <div class="setting-group">
+        <div class="setting-item">
+          <div class="setting-name">fal.ai API Key</div>
+          <div class="setting-hint">fal.ai/dashboard → Keys → Create Key</div>
+          <input type="password" id="input-fal" placeholder="key-xxxxxxxxxxxxxxxx" oninput="updateDots()"/>
+        </div>
+        <div class="setting-item">
+          <div class="setting-name">Claude API Key</div>
+          <div class="setting-hint">console.anthropic.com → API Keys</div>
+          <input type="password" id="input-claude" placeholder="sk-ant-xxxxxxxxxxxxxxxx" oninput="updateDots()"/>
+        </div>
+        <div class="setting-item">
+          <div class="setting-name">Gemini API Key</div>
+          <div class="setting-hint">aistudio.google.com → Get API Key</div>
+          <input type="password" id="input-gemini" placeholder="AIzaxxxxxxxxxxxxxxxx" oninput="updateDots()"/>
+        </div>
+      </div>
+      <button class="save-btn" onclick="saveKeys()">Kaydet</button>
+      <div class="status-msg" id="saveStatus">Kaydedildi</div>
+
+      <div class="section-label" style="margin-top:20px;">Hakkında</div>
+      <div class="setting-group">
+        <div class="setting-item">
+          <div class="setting-name">Sürüm</div>
+          <div class="setting-hint">1.0.0 · Kişisel AI Hub</div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-name">Modeller</div>
+          <div class="setting-hint">Nano Banana, Kling v3, FLUX Dev/Pro, Stable Audio, Claude Sonnet 4, Gemini 2.5 Pro</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// State
+var keys = { fal:'', claude:'', gemini:'' };
+var currentImgModel = 'nano-banana';
+var currentChatModel = 'claude';
+var chatHistory = [];
+
+var modelCosts = {
+  'nano-banana': { label:'Nano Banana · görsel', costPer: 0.025, type:'image' },
+  'flux-dev':    { label:'FLUX Dev · görsel',    costPer: 0.025, type:'image' },
+  'flux-pro':    { label:'FLUX Pro · görsel',    costPer: 0.05,  type:'image' },
+  'kling-video': { label:'Kling v3 · video (5s)',costPer: 0.28,  type:'video' },
+  'stable-audio':{ label:'Stable Audio · ses',   costPer: 0.10,  type:'audio' },
+};
+var falModelIds = {
+  'nano-banana': 'fal-ai/nano-banana',
+  'flux-dev':    'fal-ai/flux/dev',
+  'flux-pro':    'fal-ai/flux-pro/v1.1',
+  'kling-video': 'fal-ai/kling-video/v2.1/standard/text-to-video',
+  'stable-audio':'fal-ai/stable-audio',
+};
+
+// Load saved keys
+(function(){
+  try {
+    var saved = localStorage.getItem('aihub-keys');
+    if(saved){ keys = JSON.parse(saved); }
+    if(keys.fal)    document.getElementById('input-fal').value    = keys.fal;
+    if(keys.claude) document.getElementById('input-claude').value = keys.claude;
+    if(keys.gemini) document.getElementById('input-gemini').value = keys.gemini;
+    updateDots();
+  } catch(e){}
+})();
+
+function saveKeys(){
+  keys.fal    = document.getElementById('input-fal').value.trim();
+  keys.claude = document.getElementById('input-claude').value.trim();
+  keys.gemini = document.getElementById('input-gemini').value.trim();
+  try { localStorage.setItem('aihub-keys', JSON.stringify(keys)); } catch(e){}
+  updateDots();
+  var s = document.getElementById('saveStatus');
+  s.style.display = 'block';
+  setTimeout(function(){ s.style.display='none'; }, 2000);
+  showToast('Kaydedildi');
+}
+
+function updateDots(){
+  keys.fal    = document.getElementById('input-fal').value.trim();
+  keys.claude = document.getElementById('input-claude').value.trim();
+  keys.gemini = document.getElementById('input-gemini').value.trim();
+  document.getElementById('dot-fal').className    = 'dot' + (keys.fal    ? ' ok' : '');
+  document.getElementById('dot-claude').className = 'dot' + (keys.claude ? ' ok' : '');
+  document.getElementById('dot-gemini').className = 'dot' + (keys.gemini ? ' ok' : '');
+}
+
+// Page navigation
+function showPage(name){
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t,i){
+    t.classList.toggle('active', ['home','image','chat','settings'][i] === name);
+  });
+  document.getElementById('page-'+name).classList.add('active');
+}
+
+// Image model
+function setImgModel(m){
+  currentImgModel = m;
+  document.querySelectorAll('#imgModelRow .model-chip').forEach(function(c){ c.classList.remove('active'); });
+  var el = document.getElementById('chip-'+m);
+  if(el) el.classList.add('active');
+  updateCost();
+  // hide count for video/audio
+  var info = modelCosts[m];
+  document.getElementById('sizeBox').style.display = (info.type==='video'||info.type==='audio') ? 'none' : '';
+}
+
+function updateCost(){
+  var info = modelCosts[currentImgModel];
+  var cnt = parseInt(document.getElementById('cntSelect').value) || 1;
+  var total = info.type === 'image' ? (info.costPer * cnt) : info.costPer;
+  document.getElementById('costNote').textContent = info.label;
+  document.getElementById('costVal').textContent  = '≈ $' + total.toFixed(2);
+}
+
+// Generate via fal.ai
+async function generate(){
+  if(!keys.fal){ showToast('Önce fal.ai API key gir (Ayarlar)'); return; }
+  var prompt = document.getElementById('imgPrompt').value.trim();
+  if(!prompt){ showToast('Prompt yaz'); return; }
+  var btn = document.getElementById('genBtn');
+  btn.disabled = true; btn.textContent = 'Üretiliyor...';
+  var grid = document.getElementById('imgGrid');
+  var cnt = parseInt(document.getElementById('cntSelect').value) || 1;
+  grid.innerHTML = '';
+  for(var i=0;i<(currentImgModel==='kling-video'||currentImgModel==='stable-audio'?1:cnt);i++){
+    grid.innerHTML += '<div class="img-cell"><div class="spinner"></div></div>';
+  }
+  try {
+    var modelId = falModelIds[currentImgModel];
+    var body = { prompt: prompt };
+    if(currentImgModel==='nano-banana'||currentImgModel==='flux-dev'||currentImgModel==='flux-pro'){
+      body.num_images = cnt;
+      body.image_size = document.getElementById('sizeSelect').value;
+    }
+    // Submit
+    var submitRes = await fetch('https://queue.fal.run/'+modelId, {
+      method:'POST',
+      headers:{ 'Authorization':'Key '+keys.fal, 'Content-Type':'application/json' },
+      body: JSON.stringify(body)
+    });
+    var submitData = await submitRes.json();
+    if(!submitRes.ok) throw new Error(submitData.detail || 'API hatası');
+    var requestId = submitData.request_id;
+    var statusUrl = submitData.status_url || ('https://queue.fal.run/'+modelId+'/requests/'+requestId+'/status');
+    // Poll
+    var result = null;
+    for(var attempt=0; attempt<60; attempt++){
+      await new Promise(function(r){setTimeout(r,2000)});
+      var statusRes = await fetch(statusUrl, { headers:{ 'Authorization':'Key '+keys.fal } });
+      var statusData = await statusRes.json();
+      if(statusData.status === 'COMPLETED'){
+        var resultRes = await fetch('https://queue.fal.run/'+modelId+'/requests/'+requestId, { headers:{ 'Authorization':'Key '+keys.fal } });
+        result = await resultRes.json();
+        break;
+      } else if(statusData.status === 'FAILED'){
+        throw new Error('Model hatası: ' + (statusData.error||'bilinmeyen'));
+      }
+    }
+    if(!result) throw new Error('Zaman aşımı');
+    // Render
+    grid.innerHTML = '';
+    var images = result.images || (result.video ? [result.video] : result.audio ? [result.audio] : []);
+    images.forEach(function(img){
+      var url = img.url || img;
+      if(currentImgModel==='stable-audio'){
+        grid.innerHTML += '<div class="img-cell" style="aspect-ratio:unset;padding:16px;flex-direction:column;gap:8px;">' +
+          '<div style="font-size:12px;color:var(--text2);">Ses üretildi</div>' +
+          '<audio controls src="'+url+'" style="width:100%;"></audio></div>';
+      } else if(currentImgModel==='kling-video'){
+        grid.innerHTML += '<div class="img-cell" style="aspect-ratio:16/9;"><video controls src="'+url+'" style="width:100%;height:100%;object-fit:cover;"></video></div>';
+      } else {
+        grid.innerHTML += '<div class="img-cell"><img src="'+url+'" onclick="window.open(\''+url+'\',\'_blank\')"/></div>';
+      }
+    });
+  } catch(e){
+    grid.innerHTML = '<div style="padding:16px;color:var(--red);font-size:13px;">Hata: '+e.message+'</div>';
+  }
+  btn.disabled = false; btn.textContent = 'Üret';
+}
+
+// Chat
+function setChatModel(m){
+  currentChatModel = m;
+  document.getElementById('chat-chip-claude').classList.toggle('active', m==='claude');
+  document.getElementById('chat-chip-gemini').classList.toggle('active', m==='gemini');
+  chatHistory = [];
+  var msgs = document.getElementById('chatMessages');
+  msgs.innerHTML = '<div class="msg msg-ai '+m+'">'+(m==='claude'?'Merhaba! Nasıl yardımcı olabilirim?':'Merhaba! Ben Gemini. Nasıl yardımcı olabilirim?')+'</div>';
+}
+
+function handleChatKey(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); }
+}
+
+function autoResize(el){
+  el.style.height = '42px';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+async function sendChat(){
+  var input = document.getElementById('chatInput');
+  var text = input.value.trim();
+  if(!text) return;
+  var keyNeeded = currentChatModel==='claude' ? keys.claude : keys.gemini;
+  if(!keyNeeded){ showToast('Önce ' + (currentChatModel==='claude'?'Claude':'Gemini') + ' API key gir (Ayarlar)'); return; }
+  var msgs = document.getElementById('chatMessages');
+  // Add user message
+  var ub = document.createElement('div');
+  ub.className = 'msg msg-user'; ub.textContent = text;
+  msgs.appendChild(ub);
+  chatHistory.push({ role:'user', content: text });
+  input.value = ''; input.style.height = '42px';
+  // Thinking bubble
+  var ab = document.createElement('div');
+  ab.className = 'msg msg-ai ' + currentChatModel + ' thinking';
+  ab.textContent = '...';
+  msgs.appendChild(ab);
+  msgs.scrollTop = msgs.scrollHeight;
+  try {
+    var responseText = '';
+    if(currentChatModel === 'claude'){
+      var res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{ 'x-api-key': keys.claude, 'anthropic-version':'2023-06-01', 'content-type':'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:1024, messages: chatHistory })
+      });
+      var data = await res.json();
+      if(!res.ok) throw new Error(data.error?.message || 'Claude API hatası');
+      responseText = data.content[0].text;
+    } else {
+      var gemHistory = chatHistory.slice(0,-1).map(function(m){
+        return { role: m.role==='assistant'?'model':'user', parts:[{text:m.content}] };
+      });
+      var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+keys.gemini, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ contents: gemHistory.concat([{role:'user',parts:[{text:text}]}]) })
+      });
+      var data = await res.json();
+      if(!res.ok) throw new Error(data.error?.message || 'Gemini API hatası');
+      responseText = data.candidates[0].content.parts[0].text;
+    }
+    chatHistory.push({ role:'assistant', content: responseText });
+    ab.className = 'msg msg-ai ' + currentChatModel;
+    ab.textContent = responseText;
+  } catch(e){
+    ab.className = 'msg msg-ai'; ab.style.color = 'var(--red)';
+    ab.textContent = 'Hata: ' + e.message;
+  }
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(function(){ t.style.display='none'; }, 2500);
+}
+
+// Service worker for PWA
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(function(){});
+}
+
+updateCost();
+</script>
+</body>
+</html>
